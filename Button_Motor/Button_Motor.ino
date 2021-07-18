@@ -1,13 +1,25 @@
 #define LEDR 6
 #define LEDB 7
-#define BUTTON 9
+#define BUTTON 2
 #define ENABLE 5
 #define DIRA 3
 #define DIRB 4
+#define MTRPIN1 11
+#define MTRPIN2 10
+#define MTRPIN3 9
+#define MTRPIN4 8
 
 #include "LedControl.h"
 
-LedControl lc=LedControl(12,10,11,1);
+LedControl lc=LedControl(5,3,4,1);
+
+int pole1[] = {0,0,0,0, 0,1,1,1, 0};
+int pole2[] = {0,0,0,1, 1,1,0,0, 0};
+int pole3[] = {0,1,1,1, 0,0,0,0, 0};
+int pole4[] = {1,1,0,0, 0,0,0,1, 0};
+
+int poleStep = 0;
+int stopMotor = 8;
 
 int buttonState = HIGH;
 int motorState = LOW;
@@ -17,6 +29,8 @@ unsigned long debounceDelay = 250;
 unsigned long motorOnTime = 0;
 unsigned long motorDuration = 10000;
 int secondsLeft = 0;
+
+const int rolePerMinute = 15; 
 
 const uint64_t IMAGES[] = {
   0x3844444444444438,
@@ -41,6 +55,11 @@ void setup() {
   pinMode(ENABLE,OUTPUT);
   pinMode(DIRA,OUTPUT);
   pinMode(DIRB,OUTPUT);
+
+  pinMode(MTRPIN1, OUTPUT);
+  pinMode(MTRPIN2, OUTPUT);
+  pinMode(MTRPIN3, OUTPUT);
+  pinMode(MTRPIN4, OUTPUT);
 
   digitalWrite(LEDR, motorState);
   digitalWrite(LEDB, LOW);
@@ -69,25 +88,42 @@ void motorSlowStop() {
   
   Serial.println("Stopping motor");
 
-  digitalWrite(LEDB, HIGH);
-  analogWrite(ENABLE,180);
-  delay(1000);
-  analogWrite(ENABLE,128);
-  delay(1000);
-  analogWrite(ENABLE,50);
-  delay(1000);
-  digitalWrite(ENABLE, LOW);
+  driveStepper(stopMotor);
 
+  digitalWrite(LEDB, HIGH);
+  //analogWrite(ENABLE,180);
+  delay(1000);
+  //analogWrite(ENABLE,128);
+  delay(1000);
+  //analogWrite(ENABLE,50);
+  delay(1000);
+  //digitalWrite(ENABLE, LOW);
   digitalWrite(LEDB, LOW);
 
   lc.clearDisplay(0);
+}
+
+void driveStepper(int c) {
+  digitalWrite(MTRPIN1, pole1[c]);
+  digitalWrite(MTRPIN2, pole2[c]);
+  digitalWrite(MTRPIN3, pole3[c]);
+  digitalWrite(MTRPIN4, pole4[c]);
 }
 
 void loop() {
   int reading = digitalRead(BUTTON);
 
   if(motorState == HIGH) {
-    Serial.println(motorDuration - (millis() - motorOnTime));
+    //Serial.println(motorDuration - (millis() - motorOnTime));
+
+    Serial.println("Stepping " + poleStep);
+
+    driveStepper(poleStep);
+    poleStep++;
+
+    if(poleStep > 7) {
+      poleStep=0;
+    }
   }
  
   if(motorState == HIGH && (millis() - motorOnTime) > motorDuration) {
@@ -119,8 +155,11 @@ void loop() {
         motorState = LOW;
         digitalWrite(LEDR, motorState);
 
-        digitalWrite(DIRA, LOW);
-        digitalWrite(ENABLE, LOW);
+        driveStepper(stopMotor);
+
+        //digitalWrite(DIRA, LOW);
+        //digitalWrite(ENABLE, LOW);
+        
         delay(1000);
         lc.clearDisplay(0);
       } else {
@@ -129,13 +168,17 @@ void loop() {
         motorState = HIGH;
         digitalWrite(LEDR, motorState);
 
-        digitalWrite(ENABLE, HIGH);
-        digitalWrite(DIRA, HIGH);
-        digitalWrite(DIRB, LOW);
-
+        //digitalWrite(ENABLE, HIGH);
+        //digitalWrite(DIRA, HIGH);
+        //digitalWrite(DIRB, LOW);
+    
+        digitalWrite(LEDR, motorState);
+  
         motorOnTime = millis();
       }
     }
+    
+    //delay(1);
   }
 
 }
